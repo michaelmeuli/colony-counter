@@ -34,12 +34,15 @@ var _COLOR_HISTOGRAM = "blue";
 var _HIST_BINS = 10;
 var _DIST_LINE_WIDTH = 3;
 
+var _PETRI_ZONE_FACTOR = 0;
 
 
 init();
 
 //automatic detection of ROI:
 //if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
+//selectPetriZone();
+
 
 //define ROI:
 makeRectangle(2140, 972, 1820, 1660);  // works with example image 1
@@ -65,6 +68,7 @@ function init() {
 	roiManager("reset");
 	run("Clear Results");
 }
+
 function detectSpotsDoG(minDiameter, maxDiameter) {
 	run("Duplicate...", " ");
 	// autoSetContrast() sets _INVERT to false or true
@@ -208,7 +212,7 @@ function selectInnerZone(reductionFactor) {
 
 	run("Analyze Particles...", "size="+minArea+"-Infinity add");
 	roiManager("select", 0)
-	getBoundingRect(x, y, width, height);
+	getSelectionBounds(x, y, width, height);
 	
 	borderSize = (reductionFactor*width) / 100;
 	
@@ -223,7 +227,7 @@ function selectInnerZone(reductionFactor) {
 }
 
 function incribedRectangle() {
-	getBoundingRect(x, y, width, height);
+	getSelectionBounds(x, y, width, height);
 	rWidth = (width) / sqrt(2);
 	x = x + (width / 2);
 	y = y + (width / 2);
@@ -338,5 +342,26 @@ function getHistogramCenters(start, end, binSize, binCenters) {
 		index = floor((i-start) / binSize);
 		binCenters[index] = (index * binSize) + floor(binSize/2);
 	}
+}
+
+function selectPetriZone() {
+	selectInnerZone(2);
+	getSelectionBounds(x, y, width, height);
+	print(width, height);
+	area1 = width * height;
+	print(area1);
+	rWidth = (width) / sqrt(2);
+	petriA = PI * (rWidth * rWidth);
+	print(petriA);
+	borderSize = (5*width) / 100;
+	print(borderSize);
+	run("Enlarge...", "enlarge=-"+borderSize);
+	getSelectionBounds(x, y, width, height);
+	print(width, height);
+	area2 = width * height;
+	print(area2);
+	print(petriA/area2);
+	_PETRI_ZONE_FACTOR = (petriA/area2);
+	print(_PETRI_ZONE_FACTOR);
 }
  
