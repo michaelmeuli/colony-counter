@@ -39,11 +39,18 @@ var _PETRI_CIRCLE_FACTOR = 0;
 
 
 init();
+run("Set Scale...", "distance=0 known=0 unit=pixel");
 
+//ImageQuant
 //automatic detection of ROI:
 //if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
 //selectPetriZone();
+//makeRectangle(1008, 1320, 576, 816);  // ImageQuant
 //selectPetridishBackgroundWhiteImageQuant();
+//_INVERT = false;
+//_AUTO_FIND_CONTRAST = false;
+//_MIN_DIAMETER = 2;
+//_MAX_DIAMETER = 25;
 
 //define ROI:
 makeRectangle(2140, 972, 1820, 1660);  // works with example image 1
@@ -134,6 +141,7 @@ function DoGFilter(sigmaMin, sigmaMax) {
 	close();
 	selectImage("DoGImageBigSigma");
 	close();
+	selectWindow("Result of DoGImageBigSigma");
 }
 
 function sortByFeature(FEATURE, REVERSE) {
@@ -373,7 +381,6 @@ function selectPetridishBackgroundWhiteImageQuant() {
 	roiManager("reset");
 	run("Duplicate...", " ");
 	run("16-bit");
-	run("Set Scale...", "distance=0 known=0 unit=pixel");
 	setAutoThreshold("Default");
 	run("Analyze Particles...", "size="+minArea+"-Infinity pixel add");
 	roiManager("select", 0)
