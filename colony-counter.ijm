@@ -35,6 +35,7 @@ var _HIST_BINS = 10;
 var _DIST_LINE_WIDTH = 3;
 
 var _PETRI_ZONE_FACTOR = 0;
+var _PETRI_CIRCLE_FACTOR = 0;
 
 
 init();
@@ -42,7 +43,7 @@ init();
 //automatic detection of ROI:
 //if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
 //selectPetriZone();
-
+//selectPetridishBackgroundWhiteImageQuant();
 
 //define ROI:
 makeRectangle(2140, 972, 1820, 1660);  // works with example image 1
@@ -364,4 +365,41 @@ function selectPetriZone() {
 	_PETRI_ZONE_FACTOR = (petriA/area2);
 	print(_PETRI_ZONE_FACTOR);
 }
- 
+
+function selectPetridishBackgroundWhiteImageQuant() {
+	w = getWidth();
+	h = getHeight();
+	minArea = (w*h)/10;
+	roiManager("reset");
+	run("Duplicate...", " ");
+	run("16-bit");
+	run("Set Scale...", "distance=0 known=0 unit=pixel");
+	setAutoThreshold("Default");
+	run("Analyze Particles...", "size="+minArea+"-Infinity pixel add");
+	roiManager("select", 0)
+	getSelectionBounds(x, y, width, height);
+	borderSize = (2*width) / 100;
+	run("Fit Circle");
+	run("Enlarge...", "enlarge=-"+borderSize);
+	roiManager("reset");
+	roiManager("Add");
+	getSelectionBounds(x, y, width, height);
+	r1 = width / 2;
+	petriA = PI * (r1* r1);
+	print(petriA);
+	r2 = 0.8 * r1;
+	shift = r1-r2;
+	makeOval(x + shift, y + shift, 2*r2, 2*r2)
+	roiManager("Add");
+	petriB = PI * (r2 * r2);
+	print(petriB);
+	_PETRI_CIRCLE_FACTOR = (petriA/petriB);
+	print(_PETRI_CIRCLE_FACTOR);
+	close();
+	imageID = getImageID();
+	run("Duplicate...", " ");
+	roiManager("select", 0);
+	selectImage(imageID);
+	roiManager("select", 1);
+	roiManager("reset");
+}
