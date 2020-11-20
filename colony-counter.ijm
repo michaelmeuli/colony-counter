@@ -37,29 +37,50 @@ var _DIST_LINE_WIDTH = 3;
 var _PETRI_ZONE_FACTOR = 0;
 var _PETRI_CIRCLE_FACTOR = 0;
 
+//Hogenkamp
+var _FIND_MAXIMA_PROMINENCE = 20000;
+var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 
-init();
-run("Set Scale...", "distance=0 known=0 unit=pixel");
 
-//ImageQuant
+
 //automatic detection of ROI:
 //if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
 //selectPetriZone();
 //makeRectangle(1008, 1320, 576, 816);  // ImageQuant
 //selectPetridishBackgroundWhiteImageQuant();
-//_INVERT = false;
-//_AUTO_FIND_CONTRAST = false;
-//_MIN_DIAMETER = 2;
-//_MAX_DIAMETER = 25;
-
-//define ROI:
-makeRectangle(2140, 972, 1820, 1660);  // works with example image 1
-
-detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
-runEMClusterAnalysis();
-countAndColorClusters();
 
 
+init();
+mainMRI();
+//mainImageQuantVolker();
+//mainImageQuantHogekamp();
+
+function mainMRI() {
+	//define ROI:
+	//makeRectangle(2140, 972, 1820, 1660);  // works with example image 1
+	if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
+	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
+	runEMClusterAnalysis();
+	countAndColorClusters();
+}
+
+function mainImageQuantVolker() {  // still not working (imageCalculator("Subtract create", "DoGImageBigSigma","DoGImageSmallSigma");)
+	_INVERT = false;
+	_AUTO_FIND_CONTRAST = false;
+	_MIN_DIAMETER = 2;
+	_MAX_DIAMETER = 8;
+	selectPetridishBackgroundWhiteImageQuant();
+	run("Subtract Background...", "rolling=40 light");
+	run("Enhance Contrast", "saturated=0.35");
+	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
+	runEMClusterAnalysis();
+	countAndColorClusters();
+}
+
+function mainImageQuantHogekamp() {  // "works" with example image ImageQuant.tif
+	selectPetridishBackgroundWhiteImageQuant();
+	hogekamp();
+}
 	
 function dogFilterAction() {
 	init();
@@ -75,6 +96,7 @@ function init() {
 	run("Select None");
 	roiManager("reset");
 	run("Clear Results");
+	run("Set Scale...", "distance=0 known=0 unit=pixel");
 }
 
 function detectSpotsDoG(minDiameter, maxDiameter) {
@@ -409,4 +431,15 @@ function selectPetridishBackgroundWhiteImageQuant() {
 	selectImage(imageID);
 	roiManager("select", 1);
 	roiManager("reset");
+}
+
+function hogekamp() {
+	run("Duplicate...", " ");
+	run("16-bit");
+	run("Subtract Background...", "rolling=40 light");
+	run("Enhance Contrast", "saturated=0.35");
+	run("Apply LUT");
+	run("Median...", "radius=6");
+	setMinAndMax(_CONSTANT_BRIGHTNESS_VALUE, 65535);
+	run("Find Maxima...", "prominence="+_FIND_MAXIMA_PROMINENCE+" light output=[Point Selection]");
 }
