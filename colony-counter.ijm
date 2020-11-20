@@ -1,6 +1,5 @@
 // https://github.com/MontpellierRessourcesImagerie/imagej_macros_and_scripts/wiki/MRI_Count_Spot_Populations_Tool
 
-var helpURL = "https://github.com/MontpellierRessourcesImagerie/imagej_macros_and_scripts/wiki/MRI_Count_Spot_Populations_Tool";
 
 // Petri-dish segmentation parameters
 var _REDUCTION_FACTOR = 7;
@@ -34,11 +33,14 @@ var _COLOR_HISTOGRAM = "blue";
 var _HIST_BINS = 10;
 var _DIST_LINE_WIDTH = 3;
 
+
+
 var _PETRI_ZONE_FACTOR = 0;
-var _PETRI_CIRCLE_FACTOR = 0;
+var _PETRI_CIRCLE_REDUCTION_FACTOR = 0.8;
+var _PETRI_CIRCLE_AREA_FACTOR = 0;
 
 //Hogenkamp
-var _FIND_MAXIMA_PROMINENCE = 20000;
+var _FIND_MAXIMA_PROMINENCE = 16000;
 var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 
 
@@ -51,6 +53,7 @@ var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 
 
 init();
+
 mainMRI();
 //mainImageQuantVolker();
 //mainImageQuantHogekamp();
@@ -58,7 +61,8 @@ mainMRI();
 function mainMRI() {
 	//define ROI:
 	//makeRectangle(2140, 972, 1820, 1660);  // works with example image 1
-	if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
+	//if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
+	selectPetriZone();
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
 	runEMClusterAnalysis();
 	countAndColorClusters();
@@ -376,24 +380,32 @@ function getHistogramCenters(start, end, binSize, binCenters) {
 }
 
 function selectPetriZone() {
+	imageID = getImageID();
+	run("Duplicate...", "title=showPetridish.JPG");
+	selectImage(imageID);
+	roiManager("reset");
 	selectInnerZone(2);
+	roiManager("Add");
 	getSelectionBounds(x, y, width, height);
-	print(width, height);
-	area1 = width * height;
-	print(area1);
 	rWidth = (width) / sqrt(2);
 	petriA = PI * (rWidth * rWidth);
-	print(petriA);
+	makeOval(x+(width/2)-rWidth, y+(width/2)-rWidth, 2 * rWidth, 2 * rWidth);
+	roiManager("Add");
+	roiManager("select", 0);
 	borderSize = (5*width) / 100;
-	print(borderSize);
 	run("Enlarge...", "enlarge=-"+borderSize);
 	getSelectionBounds(x, y, width, height);
-	print(width, height);
-	area2 = width * height;
-	print(area2);
-	print(petriA/area2);
-	_PETRI_ZONE_FACTOR = (petriA/area2);
-	print(_PETRI_ZONE_FACTOR);
+	roiManager("Add");
+	roiManager("Show None");
+	roiManager("select", 2);
+	area = width * height;
+	_PETRI_ZONE_FACTOR = (petriA/area);
+	print("_PETRI_ZONE_FACTOR: "+_PETRI_ZONE_FACTOR);
+	selectWindow("showPetridish.JPG");
+	roiManager("Show None");
+	roiManager("select", 1);
+	roiManager("reset");
+	selectImage(imageID);
 }
 
 function selectPetridishBackgroundWhiteImageQuant() {
@@ -415,15 +427,13 @@ function selectPetridishBackgroundWhiteImageQuant() {
 	getSelectionBounds(x, y, width, height);
 	r1 = width / 2;
 	petriA = PI * (r1* r1);
-	print(petriA);
-	r2 = 0.8 * r1;
+	r2 = _PETRI_CIRCLE_REDUCTION_FACTOR * r1;
 	shift = r1-r2;
 	makeOval(x + shift, y + shift, 2*r2, 2*r2)
 	roiManager("Add");
 	petriB = PI * (r2 * r2);
-	print(petriB);
-	_PETRI_CIRCLE_FACTOR = (petriA/petriB);
-	print(_PETRI_CIRCLE_FACTOR);
+	_PETRI_CIRCLE_AREA_FACTOR = (petriA/petriB);
+	print("_PETRI_CIRCLE_AREA_FACTOR: "+_PETRI_CIRCLE_AREA_FACTOR);
 	close();
 	imageID = getImageID();
 	run("Duplicate...", " ");
