@@ -7,31 +7,45 @@ var _PETRI_CIRCLE_AREA_FACTOR = 0;
 var _FIND_MAXIMA_PROMINENCE = 30000;
 var _CONSTANT_BRIGHTNESS_VALUE = 5000;
 
-
-
+	
 init();
-mainImageQuantHogekamp();
+input = getDirectory("Choose the folder with the pictures.");
+output = input;
+processFolder(input);
+cleanUp();
+
+
+// function to scan folders/subfolders/files to find files with correct suffix
+function processFolder(input) {
+	suffix = ".tif";
+	list = getFileList(input);
+	list = Array.sort(list);
+	for (i = 0; i < list.length; i++) {
+		if(File.isDirectory(input + File.separator + list[i]))
+			processFolder(input + File.separator + list[i]);
+		if(endsWith(list[i], suffix))
+			processFile(input, output, list[i]);
+	}
+}
+
+function processFile(input, output, file) {
+//	print("Processing: " + input + File.separator + file);
+	open("" + input + File.separator + file);
+	mainImageQuantHogekamp();
+//	print("Saving to: " + output);
+}
 
 function mainImageQuantHogekamp() {  // "works" with example image ImageQuant.tif
+	run("Set Scale...", "distance=0 known=0 unit=pixel");
 	selectPetridishBackgroundWhiteImageQuant();
 	hogekamp();
 }
 	
-function dogFilterAction() {
-	init();
-	if (_AUTO_FIND_CONTRAST) autoSetContrast();
-	sigmaMin = 	(_MIN_DIAMETER/2)/2.5;
-	sigmaMax =  (_MAX_DIAMETER/2)/2.5;
-	run("16-bit");
-	if (_INVERT) run("Invert");
-	DoGFilter(sigmaMin, sigmaMax);
-}
 
 function init() {
 	run("Select None");
 	roiManager("reset");
 	run("Clear Results");
-	run("Set Scale...", "distance=0 known=0 unit=pixel");
 }
 
 function selectPetridishBackgroundWhiteImageQuant() {
@@ -55,7 +69,7 @@ function selectPetridishBackgroundWhiteImageQuant() {
 	petriA = PI * (r1* r1);
 	r2 = _PETRI_CIRCLE_REDUCTION_FACTOR * r1;
 	shift = r1-r2;
-	makeOval(x + shift, y + shift, 2*r2, 2*r2)
+	makeOval(x + shift, y + shift, 2*r2, 2*r2);
 	roiManager("Add");
 	petriB = PI * (r2 * r2);
 	_PETRI_CIRCLE_AREA_FACTOR = (petriA/petriB);
@@ -80,4 +94,31 @@ function hogekamp() {
 	setMinAndMax(_CONSTANT_BRIGHTNESS_VALUE, 65535);
 //	run("Find Maxima...", "prominence="+_FIND_MAXIMA_PROMINENCE+" light output=Count");
 	run("Find Maxima...", "prominence="+_FIND_MAXIMA_PROMINENCE+" light output=[Point Selection]");
+	run("Measure");
+	print("nResults: "+nResults);
+	 if (nResults>0) {
+//		selectWindow("Log");
+		selectWindow("Results");
+      	waitForUser("found possible SCO");
+   }
+//	run("Clear Results");
+}
+
+
+
+// Closes the "Results" and "Log" windows and all image windows
+function cleanUp() {
+    requires("1.30e");
+    if (isOpen("Results")) {
+         selectWindow("Results"); 
+         run("Close" );
+    {
+    if (isOpen("Log")) {
+         selectWindow("Log");
+         run("Close" );
+    }
+    while (nImages()>0) {
+          selectImage(nImages());  
+          run("Close");
+    }
 }
