@@ -34,8 +34,10 @@ var _HIST_BINS = 10;
 var _DIST_LINE_WIDTH = 3;
 
 
-
+// Parameters in selectPetriZone()
 var _PETRI_ZONE_FACTOR = 0;
+
+// Parameters in selectPetridishBackgroundWhiteImageQuant()
 var _PETRI_CIRCLE_REDUCTION_FACTOR = 0.8;
 var _PETRI_CIRCLE_AREA_FACTOR = 0;
 
@@ -54,6 +56,10 @@ var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 
 init();
 
+//Debug:
+//dogFilterAction(2, 25);
+
+
 mainMRI();
 //mainImageQuantVolker();
 //mainImageQuantHogekamp();
@@ -69,13 +75,11 @@ function mainMRI() {
 }
 
 function mainImageQuantVolker() {  // still not working (imageCalculator("Subtract create", "DoGImageBigSigma","DoGImageSmallSigma");)
-	_INVERT = false;
+	_INVERT = true;
 	_AUTO_FIND_CONTRAST = false;
 	_MIN_DIAMETER = 2;
-	_MAX_DIAMETER = 8;
+	_MAX_DIAMETER = 25;
 	selectPetridishBackgroundWhiteImageQuant();
-	run("Subtract Background...", "rolling=40 light");
-	run("Enhance Contrast", "saturated=0.35");
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
 	runEMClusterAnalysis();
 	countAndColorClusters();
@@ -86,13 +90,17 @@ function mainImageQuantHogekamp() {  // "works" with example image ImageQuant.ti
 	hogekamp();
 }
 	
-function dogFilterAction() {
+function dogFilterAction(minDiameter, maxDiameter) {
 	init();
-	if (_AUTO_FIND_CONTRAST) autoSetContrast();
-	sigmaMin = 	(_MIN_DIAMETER/2)/2.5;
-	sigmaMax =  (_MAX_DIAMETER/2)/2.5;
-	run("16-bit");
+//	if (_AUTO_FIND_CONTRAST) autoSetContrast();
 	if (_INVERT) run("Invert");
+	sigmaMin = 	floor((minDiameter)/2.5);
+	sigmaMax =  ceil((maxDiameter)/2.5);
+	run("16-bit");
+	if (_INVERT) {
+		run("Invert");
+		run("Invert LUT");
+	}
 	DoGFilter(sigmaMin, sigmaMax);
 }
 
@@ -112,22 +120,29 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	sigmaMin = 	floor((minDiameter)/2.5);
 	sigmaMax =  ceil((maxDiameter)/2.5);
 	run("16-bit");
-	if (_INVERT) run("Invert");
+	if (_INVERT) {
+		run("Invert");
+		// ImageQuant images are opened with inverted LUT
+		// Either invert LUT here again or do setAutoThreshold("Default"); instead of setAutoThreshold("Default dark");
+		run("Invert LUT");
+	}
 	DoGFilter(sigmaMin, sigmaMax);
 	resetThreshold();
-	setAutoThreshold(_THRESHOLD_METHOD + " dark");
+	setAutoThreshold("Default dark");
+//	setAutoThreshold(_THRESHOLD_METHOD + " dark");   
 	setOption("BlackBackground", false);
 	run("Convert to Mask");
 	run("Fill Holes");
 	run("Analyze Particles...", "size="+_MIN_SIZE+"-Infinity show=Masks in_situ");
-	run("Watershed");    // separate touching objects
+	run("Watershed");
 	run("Analyze Particles...", "size="+_MIN_SIZE+"-Infinity circularity="+_MIN_CIRCULARITY+"-1.00 show=Nothing exclude add");
 	if (_FIT_ELLIPSE) fitEllipses();
 	roiManager("Show All");
 	roiManager("measure");
-	sortByFeature(_MAIN_FEATURE, false);  // _MAIN_FEATURE = "Area";
+	sortByFeature(_MAIN_FEATURE, false);
 	close();
 	roiManager("Show All without labels")
+
 }
 
 function fitEllipses() {
@@ -429,16 +444,16 @@ function selectPetridishBackgroundWhiteImageQuant() {
 	petriA = PI * (r1* r1);
 	r2 = _PETRI_CIRCLE_REDUCTION_FACTOR * r1;
 	shift = r1-r2;
-	makeOval(x + shift, y + shift, 2*r2, 2*r2)
+	makeOval(x + shift, y + shift, 2*r2, 2*r2);
 	roiManager("Add");
 	petriB = PI * (r2 * r2);
 	_PETRI_CIRCLE_AREA_FACTOR = (petriA/petriB);
 	print("_PETRI_CIRCLE_AREA_FACTOR: "+_PETRI_CIRCLE_AREA_FACTOR);
 	close();
-	imageID = getImageID();
-	run("Duplicate...", " ");
-	roiManager("select", 0);
-	selectImage(imageID);
+//	imageID = getImageID();
+//	run("Duplicate...", " ");
+//	roiManager("select", 0);
+//	selectImage(imageID);
 	roiManager("select", 1);
 	roiManager("reset");
 }
