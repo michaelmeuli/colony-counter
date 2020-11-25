@@ -74,7 +74,7 @@ function mainMRI() {
 	countAndColorClusters();
 }
 
-function mainImageQuantVolker() {  // still not working (imageCalculator("Subtract create", "DoGImageBigSigma","DoGImageSmallSigma");)
+function mainImageQuantVolker() {
 	_INVERT = true;
 	_AUTO_FIND_CONTRAST = false;
 	_MIN_DIAMETER = 2;
