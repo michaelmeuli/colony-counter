@@ -11,6 +11,7 @@ var _INVERT = true;
 var _AUTO_FIND_CONTRAST = true;
 var _MIN_DIAMETER = 2;
 var _MAX_DIAMETER = 25;
+var _USE_FIXED_THRESHOLD_FOR_PETRIDISH = false;
 
 // Spot Segmentation parameters
 var _THRESHOLD_METHODS = newArray("Default", "Intermodes");
@@ -38,27 +39,25 @@ var _DIST_LINE_WIDTH = 3;
 var _PETRI_ZONE_FACTOR = 0;
 
 // Parameters in selectPetridishBackgroundWhiteImageQuant()
-var _PETRI_CIRCLE_REDUCTION_FACTOR = 0.8;
+var _PETRI_CIRCLE_REDUCTION_FACTOR = 1;
 var _PETRI_CIRCLE_AREA_FACTOR = 0;
 
 //Hogenkamp
 var _FIND_MAXIMA_PROMINENCE = 16000;
 var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 
+//sortByFeature()
+var _REVERSE = false;
 
-
-//automatic detection of ROI:
-//if (_REDUCTION_FACTOR>0) selectInnerZone(_REDUCTION_FACTOR);
-//selectPetriZone();
-//makeRectangle(1008, 1320, 576, 816);  // ImageQuant
-//selectPetridishBackgroundWhiteImageQuant();
-
-
-init();
+//countAndColorBrightClonesImageQuant()
+var _THRESHOLD_BRIGHT_CLONES = 20000;
 
 //Debug:
 //dogFilterAction(2, 25);
 
+
+
+init();
 
 mainMRI();
 //mainImageQuantVolker();
@@ -79,10 +78,14 @@ function mainImageQuantVolker() {
 	_AUTO_FIND_CONTRAST = false;
 	_MIN_DIAMETER = 2;
 	_MAX_DIAMETER = 25;
+	_MAIN_FEATURE = "Area";
+	_REVERSE = true;
+	_USE_FIXED_THRESHOLD_FOR_PETRIDISH = true;
 	selectPetridishBackgroundWhiteImageQuant();
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
-	runEMClusterAnalysis();
-	countAndColorClusters();
+//	runEMClusterAnalysis();
+//	countAndColorClusters();
+	countAndColorBrightClonesImageQuant();
 }
 
 function mainImageQuantHogekamp() {  // "works" with example image ImageQuant.tif
@@ -128,8 +131,10 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	}
 	DoGFilter(sigmaMin, sigmaMax);
 	resetThreshold();
-	setAutoThreshold("Default dark");
-//	setAutoThreshold(_THRESHOLD_METHOD + " dark");   
+	if (_USE_FIXED_THRESHOLD_FOR_PETRIDISH) 
+		setThreshold(2323, 65535);  	// setAutoThreshold does not work with complete Petri dish
+	else
+		setAutoThreshold(_THRESHOLD_METHOD + " dark");   
 	setOption("BlackBackground", false);
 	run("Convert to Mask");
 	run("Fill Holes");
@@ -138,11 +143,10 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	run("Analyze Particles...", "size="+_MIN_SIZE+"-Infinity circularity="+_MIN_CIRCULARITY+"-1.00 show=Nothing exclude add");
 	if (_FIT_ELLIPSE) fitEllipses();
 	roiManager("Show All");
-	roiManager("measure");
-	sortByFeature(_MAIN_FEATURE, false);
 	close();
-	roiManager("Show All without labels")
-
+	roiManager("measure");
+	sortByFeature(_MAIN_FEATURE, _REVERSE);
+	roiManager("show all without labels");
 }
 
 function fitEllipses() {
@@ -467,4 +471,22 @@ function hogekamp() {
 	run("Median...", "radius=6");
 	setMinAndMax(_CONSTANT_BRIGHTNESS_VALUE, 65535);
 	run("Find Maxima...", "prominence="+_FIND_MAXIMA_PROMINENCE+" light output=[Point Selection]");
+}
+
+function countAndColorBrightClonesImageQuant() {
+	bright = 0;
+	for (i = 0; i < nResults; i++) {
+		mean = getResult("Mean", i);
+		if (mean<_THRESHOLD_BRIGHT_CLONES) {
+			bright++;
+			roiManager("Select", i);
+			roiManager("Set Color", _COLOR_CLUSTER_ONE);
+	    	roiManager("Set Line Width", 0);
+	}
+	Table.create("Colony counts");
+//	Table.setColumn("Total", nResults);
+	Table.set("File", 0, getTitle);
+	Table.set("Total", 0, nResults);
+	Table.set("Positive", 0, bright);
+	Table.setLocationAndSize(100, 100, 600, 200);
 }
