@@ -39,7 +39,7 @@ var _DIST_LINE_WIDTH = 3;
 var _PETRI_ZONE_FACTOR = 0;
 
 // Parameters in selectPetridishBackgroundWhiteImageQuant()
-var _PETRI_CIRCLE_REDUCTION_FACTOR = 1;
+var _PETRI_CIRCLE_REDUCTION_FACTOR = 0.98;
 var _PETRI_CIRCLE_AREA_FACTOR = 0;
 
 //Hogenkamp
@@ -50,17 +50,45 @@ var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 var _REVERSE = false;
 
 //countAndColorBrightClonesImageQuant()
-var _THRESHOLD_BRIGHT_CLONES = 35000;
+var _THRESHOLD_BRIGHT_CLONES = 10000;
 
 //Debug:
 //dogFilterAction(2, 25);
 
 
-
 init();
+Table.create("Colony counts");
+input = getDirectory("Choose the folder with the pictures.");
+output = input;
+processFolder(input);
+//mainImageQuantVolker();
+
+
+// function to scan folders/subfolders/files to find files with correct suffix
+function processFolder(input) {
+	suffix = ".tif";
+	list = getFileList(input);
+	list = Array.sort(list);
+	for (i = 0; i < list.length; i++) {
+		if(File.isDirectory(input + File.separator + list[i]))
+			processFolder(input + File.separator + list[i]);
+		if(endsWith(list[i], suffix))
+			processFile(input, output, list[i]);
+	}
+}
+
+function processFile(input, output, file) {
+//	print("Processing: " + input + File.separator + file);
+	if (isOpen("Results")) run("Clear Results");
+	close("*"); // Closes all image windows.
+	open("" + input + File.separator + file);
+	mainImageQuantVolker();
+	waitForUser("Click OK for next image");
+//	print("Saving to: " + output);
+}
 
 //mainMRI();
-mainImageQuantVolker();
+//mainImageQuantVolker();
 //mainImageQuantHogekamp();
 
 function mainMRI() {
@@ -76,11 +104,15 @@ function mainMRI() {
 function mainImageQuantVolker() {
 	_INVERT = true;
 	_AUTO_FIND_CONTRAST = false;
-	_MIN_DIAMETER = 2;
-	_MAX_DIAMETER = 25;
-	_MAIN_FEATURE = "Area";
+	_MIN_DIAMETER = 10;
+	_MAX_DIAMETER = 40;
+	_MAIN_FEATURE = "Mean";
 	_REVERSE = true;
 	_USE_FIXED_THRESHOLD_FOR_PETRIDISH = true;
+	_MIN_CIRCULARITY = 0.9;
+	_FIT_ELLIPSE = true;
+	_PETRI_CIRCLE_REDUCTION_FACTOR = 0.97;
+	run("Set Scale...", "distance=0 known=0 unit=pixel");
 	selectPetridishBackgroundWhiteImageQuant();
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
 	countAndColorBrightClonesImageQuant();
@@ -108,11 +140,12 @@ function dogFilterAction(minDiameter, maxDiameter) {
 function init() {
 	run("Select None");
 	roiManager("reset");
-	run("Clear Results");
-	run("Set Scale...", "distance=0 known=0 unit=pixel");
+	if (isOpen("Results")) run("Clear Results");
 }
 
 function detectSpotsDoG(minDiameter, maxDiameter) {
+	run("Duplicate...", " ");
+	imageID = getImageID();
 	run("Duplicate...", " ");
 	// autoSetContrast() sets _INVERT to false or true
 	// dark spots: _INVERT = false;  
@@ -130,7 +163,7 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	DoGFilter(sigmaMin, sigmaMax);
 	resetThreshold();
 	if (_USE_FIXED_THRESHOLD_FOR_PETRIDISH) 
-		setThreshold(1800, 65535);  	// setAutoThreshold does not work with complete Petri dish
+		setThreshold(1000, 65535);  	// setAutoThreshold does not work with complete Petri dish
 	else
 		setAutoThreshold(_THRESHOLD_METHOD + " dark");   
 	setOption("BlackBackground", false);
@@ -142,6 +175,8 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	if (_FIT_ELLIPSE) fitEllipses();
 	roiManager("Show All");
 	close();
+	close();
+	selectImage(imageID);
 	roiManager("measure");
 	sortByFeature(_MAIN_FEATURE, _REVERSE);
 	roiManager("show all without labels");
@@ -206,8 +241,7 @@ function sortByFeature(FEATURE, REVERSE) {
 	roiManager("Deselect");
 	/* Sort the rois in the roi-manager according to their names */
 	roiManager("Sort");
-	selectWindow("Results");
-	run("Close");
+	run("Clear Results");
 	roiManager("Show None");
 	roiManager("Show All");
 	/* Measure the rois in the roi manager*/
@@ -476,7 +510,7 @@ function countAndColorBrightClonesImageQuant() {
 	printImage = false;
 	for (i = 0; i < nResults; i++) {
 		mean = getResult("Mean", i);
-		if (mean<_THRESHOLD_BRIGHT_CLONES) {	
+		if (mean > _THRESHOLD_BRIGHT_CLONES) {	
 			bright++;
 			printImage = true;
 			roiManager("Select", i);
@@ -491,16 +525,22 @@ function countAndColorBrightClonesImageQuant() {
 	    	run("Add Selection...");
 		}
 	}
-	Table.create("Colony counts");
-//	Table.setColumn("Total", nResults);
-	Table.set("File", 0, getTitle);
-	Table.set("Total", 0, nResults);
-	Table.set("Positive", 0, bright);
-	Table.setLocationAndSize(100, 100, 600, 200);
+//	Table.create("Colony counts");
+ 	selectWindow("Colony counts");
+ 	currentTableSize = Table.size;
+	Table.set("File", currentTableSize, getTitle);
+	Table.set("Total", currentTableSize, nResults);
+	Table.set("Positive", currentTableSize, bright);
+	Table.setLocationAndSize(1000, 100, 600, 200);
+	Table.update;
 	addFilenameOverlay();
 	run("Hide Overlay");
 	run("Show Overlay");
+	setMinAndMax(0, 40000);
+	selectWindow("Colony counts");
+//	close("\\Others"); // Closes all images except for the front image.
 //	if (printImage)  run("Print...");
+//	close("*"); // Closes all image windows.
 }
 
 function addFilenameOverlay() {
