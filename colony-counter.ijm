@@ -50,7 +50,7 @@ var _CONSTANT_BRIGHTNESS_VALUE = 8000;
 var _REVERSE = false;
 
 //countAndColorBrightClonesImageQuant()
-var _THRESHOLD_BRIGHT_CLONES = 20000;
+var _THRESHOLD_BRIGHT_CLONES = 35000;
 
 //Debug:
 //dogFilterAction(2, 25);
@@ -59,8 +59,8 @@ var _THRESHOLD_BRIGHT_CLONES = 20000;
 
 init();
 
-mainMRI();
-//mainImageQuantVolker();
+//mainMRI();
+mainImageQuantVolker();
 //mainImageQuantHogekamp();
 
 function mainMRI() {
@@ -83,8 +83,6 @@ function mainImageQuantVolker() {
 	_USE_FIXED_THRESHOLD_FOR_PETRIDISH = true;
 	selectPetridishBackgroundWhiteImageQuant();
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
-//	runEMClusterAnalysis();
-//	countAndColorClusters();
 	countAndColorBrightClonesImageQuant();
 }
 
@@ -132,7 +130,7 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	DoGFilter(sigmaMin, sigmaMax);
 	resetThreshold();
 	if (_USE_FIXED_THRESHOLD_FOR_PETRIDISH) 
-		setThreshold(2323, 65535);  	// setAutoThreshold does not work with complete Petri dish
+		setThreshold(1800, 65535);  	// setAutoThreshold does not work with complete Petri dish
 	else
 		setAutoThreshold(_THRESHOLD_METHOD + " dark");   
 	setOption("BlackBackground", false);
@@ -475,13 +473,23 @@ function hogekamp() {
 
 function countAndColorBrightClonesImageQuant() {
 	bright = 0;
+	printImage = false;
 	for (i = 0; i < nResults; i++) {
 		mean = getResult("Mean", i);
-		if (mean<_THRESHOLD_BRIGHT_CLONES) {
+		if (mean<_THRESHOLD_BRIGHT_CLONES) {	
 			bright++;
+			printImage = true;
+			roiManager("Select", i);
+			roiManager("Set Color", _COLOR_CLUSTER_TWO);
+	    	roiManager("Set Line Width", 2);
+	    	run("Add Selection...");
+		}
+		else {
 			roiManager("Select", i);
 			roiManager("Set Color", _COLOR_CLUSTER_ONE);
-	    	roiManager("Set Line Width", 0);
+	    	roiManager("Set Line Width", 2);
+	    	run("Add Selection...");
+		}
 	}
 	Table.create("Colony counts");
 //	Table.setColumn("Total", nResults);
@@ -489,4 +497,21 @@ function countAndColorBrightClonesImageQuant() {
 	Table.set("Total", 0, nResults);
 	Table.set("Positive", 0, bright);
 	Table.setLocationAndSize(100, 100, 600, 200);
+	addFilenameOverlay();
+	run("Hide Overlay");
+	run("Show Overlay");
+//	if (printImage)  run("Print...");
 }
+
+function addFilenameOverlay() {
+    fontSize = 24;
+    x = 10;
+    y = fontSize;
+    setColor("white");
+    setFont("SansSerif", fontSize);
+    name = getInfo("image.filename");
+//  Overlay.remove;
+    Overlay.drawString(name, x, y);
+    Overlay.show;
+}
+	
