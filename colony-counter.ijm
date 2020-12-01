@@ -12,6 +12,7 @@ var _AUTO_FIND_CONTRAST = true;
 var _MIN_DIAMETER = 2;
 var _MAX_DIAMETER = 25;
 var _USE_FIXED_THRESHOLD_FOR_PETRIDISH = false;
+var _THRESHOLD_FOR_PETRIDISH = 1000;
 
 // Spot Segmentation parameters
 var _THRESHOLD_METHODS = newArray("Default", "Intermodes");
@@ -109,9 +110,11 @@ function mainImageQuantVolker() {
 	_MAIN_FEATURE = "Mean";
 	_REVERSE = true;
 	_USE_FIXED_THRESHOLD_FOR_PETRIDISH = true;
-	_MIN_CIRCULARITY = 0.9;
+	_THRESHOLD_FOR_PETRIDISH = 1500;
+	_MIN_CIRCULARITY = 0.8;
 	_FIT_ELLIPSE = true;
-	_PETRI_CIRCLE_REDUCTION_FACTOR = 0.97;
+	_PETRI_CIRCLE_REDUCTION_FACTOR = 0.99;
+	_THRESHOLD_BRIGHT_CLONES = 15000;
 	run("Set Scale...", "distance=0 known=0 unit=pixel");
 	selectPetridishBackgroundWhiteImageQuant();
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
@@ -163,7 +166,7 @@ function detectSpotsDoG(minDiameter, maxDiameter) {
 	DoGFilter(sigmaMin, sigmaMax);
 	resetThreshold();
 	if (_USE_FIXED_THRESHOLD_FOR_PETRIDISH) 
-		setThreshold(1000, 65535);  	// setAutoThreshold does not work with complete Petri dish
+		setThreshold(_THRESHOLD_FOR_PETRIDISH, 65535);  	// setAutoThreshold does not work with complete Petri dish
 	else
 		setAutoThreshold(_THRESHOLD_METHOD + " dark");   
 	setOption("BlackBackground", false);
@@ -531,7 +534,7 @@ function countAndColorBrightClonesImageQuant() {
 	Table.set("File", currentTableSize, getTitle);
 	Table.set("Total", currentTableSize, nResults);
 	Table.set("Positive", currentTableSize, bright);
-	Table.setLocationAndSize(1000, 100, 600, 200);
+	Table.setLocationAndSize(1000, 100, 800, 1000);
 	Table.update;
 	addFilenameOverlay();
 	run("Hide Overlay");
@@ -539,7 +542,7 @@ function countAndColorBrightClonesImageQuant() {
 	setMinAndMax(0, 40000);
 	selectWindow("Colony counts");
 //	close("\\Others"); // Closes all images except for the front image.
-//	if (printImage)  run("Print...");
+	if (printImage)  run("Print...");
 //	close("*"); // Closes all image windows.
 }
 
@@ -547,7 +550,7 @@ function addFilenameOverlay() {
     fontSize = 24;
     x = 10;
     y = fontSize;
-    setColor("white");
+    setColor("black");
     setFont("SansSerif", fontSize);
     name = getInfo("image.filename");
 //  Overlay.remove;
