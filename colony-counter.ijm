@@ -39,7 +39,7 @@ var _DIST_LINE_WIDTH = 3;
 // Parameters in selectPetriZone()
 var _PETRI_ZONE_FACTOR = 0;
 
-// Parameters in selectPetridishBackgroundWhiteImageQuant()
+// Parameters in selectPetridishImageQuant()
 var _PETRI_CIRCLE_REDUCTION_FACTOR = 0.98;
 var _PETRI_CIRCLE_AREA_FACTOR = 0;
 
@@ -58,11 +58,15 @@ var _THRESHOLD_BRIGHT_CLONES = 10000;
 
 
 init();
-Table.create("Colony counts");
-input = getDirectory("Choose the folder with the pictures.");
-output = input;
-processFolder(input);
+//Table.create("Colony counts");
+//input = getDirectory("Choose the folder with the pictures.");
+//output = input;
+//processFolder(input);
+
+
+mainMRI();
 //mainImageQuantVolker();
+//mainImageQuantHogekamp();
 
 
 // function to scan folders/subfolders/files to find files with correct suffix
@@ -88,9 +92,7 @@ function processFile(input, output, file) {
 //	print("Saving to: " + output);
 }
 
-//mainMRI();
-//mainImageQuantVolker();
-//mainImageQuantHogekamp();
+
 
 function mainMRI() {
 	//define ROI:
@@ -116,13 +118,13 @@ function mainImageQuantVolker() {
 	_PETRI_CIRCLE_REDUCTION_FACTOR = 0.99;
 	_THRESHOLD_BRIGHT_CLONES = 15000;
 	run("Set Scale...", "distance=0 known=0 unit=pixel");
-	selectPetridishBackgroundWhiteImageQuant();
+	selectPetridishImageQuant();
 	detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
 	countAndColorBrightClonesImageQuant();
 }
 
 function mainImageQuantHogekamp() {  // "works" with example image ImageQuant.tif
-	selectPetridishBackgroundWhiteImageQuant();
+	selectPetridishImageQuant();
 	hogekamp();
 }
 	
@@ -251,24 +253,6 @@ function sortByFeature(FEATURE, REVERSE) {
 	roiManager("Measure");
 }
 
-function visualizeResults() {
-	String.copyResults();				// Copies the result table into the clipboard
-	selection = String.paste;			// String.paste answers the content of the clipboard
-	// Your code starts after this line
-	lines = split(selection, "\n");
-	indices = newArray(0);				// This array is initially empty. It will contain the indices of the rois that
-										// correspond to the selected measurements.
-	for(i=0; i<lines.length; i++) {		// For each line in the results table...
-		line = lines[i];				// Get the ith line
-		columns = split(line, "\t");	
-		index = parseInt(columns[0]) - 1;	// Get the value of column 0 which contains the line-number of the measurement
-											// Indices in the roi-manager start with 0, those written in the result table with 1
-		indices = Array.concat(indices, index);	// Append the new index to the array indices.
-	}
-	roiManager("select", indices);
-	if (indices.length>1) roiManager("Combine");
-}
-
 function ceil(number) {
 	result =  floor(number)+1;
 	if ((result - (number) == 1)) result = result - 1;
@@ -365,74 +349,6 @@ function countAndColorClusters() {
     if (nImages > 0) run("Select None");
 }
 
-function gauss(x, mu, sigma) {
-	res = (1/(sigma*sqrt(2*PI)))*exp(-0.5*pow(((x-mu)/sigma),2));
-	return res;
-}
-
-function plotHistogramAndGaussians() {
-	selectWindow("Results");
-	areas = Table.getColumn(_MAIN_FEATURE);
-	Array.getStatistics(areas, minArea, maxArea, meanArea, stdDevArea);
-
-	selectWindow("clusters");
-	mu1 = Table.get("mean", 0);
-	sigma1 = Table.get("stddev", 0);
-	mu2 = Table.get("mean", 1);
-	sigma2 = Table.get("stddev", 1);
-	intersection = Table.get("intersection",0);
-	
-	xValues = Array.getSequence(maxArea+1);
-	yValues1 = newArray(maxArea+1);
-	yValues2 = newArray(maxArea+1);
-	
-	for (i = 0; i <xValues.length; i++) {
-		yValues1[i] = gauss(i, mu1, sigma1); 
-		yValues2[i] = gauss(i, mu2, sigma2); 
-	}
-	numberOfBins = floor((maxArea - minArea) / _HIST_BINS)+1;
-	binCenters = newArray(numberOfBins);
-	counts = newArray(numberOfBins);
-	getHistogramCounts(areas, minArea, _HIST_BINS, counts, true);
-	getHistogramCenters(minArea, maxArea, _HIST_BINS, binCenters);
-	
-	Plot.create(_MAIN_FEATURE+" Histogram / "+_MAIN_FEATURE+" Distributions", _MAIN_FEATURE, "frequency/probability density");
-	Plot.setColor("blue");
-	Plot.add("Separated Bars", binCenters, counts);
-	Plot.setStyle(0, _COLOR_HISTOGRAM+",none,1.0,Separated Bars");
-	Plot.add("line", xValues, yValues1);
-	Plot.setStyle(1, _COLOR_CLUSTER_ONE+",none,"+_DIST_LINE_WIDTH+",Line");
-	Plot.add("line", xValues, yValues2);
-	Plot.setStyle(2, _COLOR_CLUSTER_TWO+",none,"+_DIST_LINE_WIDTH+",Line");
-	Plot.setJustification("right");
-	Plot.addText("intersection = "+intersection, 0.9, 0.10);
-	Plot.show();
-	Plot.setLimitsToFit();
-}
-
-function getHistogramCounts(areas, start, binSize, counts, normalize) {
-	for(i=0; i<areas.length; i++) {
-		index = floor((areas[i]-start) / binSize);
-		counts[index]++; 	
-	}
-	if (!normalize) return;
-	sum = 0;	
-	for (i = 0; i < counts.length; i++) {
-		sum = sum + counts[i];
-	}
-	totalArea = sum * binSize;
-	for (i = 0; i < counts.length; i++) {
-		counts[i] = counts[i] / totalArea;
-	}
-}
-
-function getHistogramCenters(start, end, binSize, binCenters) {
-	for(i=start; i<end+1; i=i+binSize) {
-		index = floor((i-start) / binSize);
-		binCenters[index] = (index * binSize) + floor(binSize/2);
-	}
-}
-
 function selectPetriZone() {
 	imageID = getImageID();
 	run("Duplicate...", "title=showPetridish.JPG");
@@ -462,7 +378,7 @@ function selectPetriZone() {
 	selectImage(imageID);
 }
 
-function selectPetridishBackgroundWhiteImageQuant() {
+function selectPetridishImageQuant() {
 	w = getWidth();
 	h = getHeight();
 	minArea = (w*h)/10;
