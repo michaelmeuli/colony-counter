@@ -64,9 +64,37 @@ init();
 //processFolder(input);
 
 
-mainMRI();
+//mainMRI();
 //mainImageQuantVolker();
 //mainImageQuantHogekamp();
+
+imageID = getImageID();
+addPredifinedPolygons();
+Table.create("ROI counts");
+processAllROIs();
+
+function processAllROIs() {
+	count = roiManager("count");
+	for (i = 0; i < count; i++) {
+		addPredifinedPolygons();  // needed to restore predifined Polygons after detectSpotsDoG()
+		roiManager("select", i);
+		waitForUser("Adjust ROI "+i+" if necessary");
+		roiManager("Update");
+		detectSpotsDoG(_MIN_DIAMETER, _MAX_DIAMETER);
+		countAndColorClones();
+		selectImage(imageID);
+	}
+}
+
+function addPredifinedPolygons() {
+	roiManager("reset");
+	makePolygon(2400,834,2400,1308,2400,1700,2700,1700,2700,1296,2700,822);
+	roiManager("Add");
+	makePolygon(2790,822,2814,1278,2814,1728,3120,1710,3090,1248,3078,810);
+	roiManager("Add");
+	makePolygon(3180,828,3186,1308,3216,1734,3480,1698,3480,1290,3438,798);
+	roiManager("Add");
+}
 
 
 // function to scan folders/subfolders/files to find files with correct suffix
@@ -146,12 +174,16 @@ function init() {
 	run("Select None");
 	roiManager("reset");
 	if (isOpen("Results")) run("Clear Results");
+	roiManager("reset");
+	close("\\Others"); // Closes all images except for the front image.
+//	close("*"); // Closes all image windows.
 }
 
 function detectSpotsDoG(minDiameter, maxDiameter) {
 	run("Duplicate...", " ");
 	imageID = getImageID();
 	run("Duplicate...", " ");
+	roiManager("reset");
 	// autoSetContrast() sets _INVERT to false or true
 	// dark spots: _INVERT = false;  
 	// bright spots: _INVERT = true;
@@ -457,9 +489,25 @@ function countAndColorBrightClonesImageQuant() {
 	run("Show Overlay");
 	setMinAndMax(0, 40000);
 	selectWindow("Colony counts");
-//	close("\\Others"); // Closes all images except for the front image.
-	if (printImage)  run("Print...");
-//	close("*"); // Closes all image windows.
+//	if (printImage)  run("Print...");
+}
+
+function countAndColorClones() {
+	for (i = 0; i < nResults; i++) {
+		roiManager("Select", i);
+		roiManager("Set Color", _COLOR_CLUSTER_TWO);
+		roiManager("Set Line Width", 1);
+		run("Add Selection...");
+	}
+//	Table.create("Colony counts");
+ 	selectWindow("ROI counts");
+ 	currentTableSize = Table.size;
+	Table.set("File", currentTableSize, getTitle);
+	Table.set("Total", currentTableSize, nResults);
+	Table.setLocationAndSize(1000, 100, 800, 1000);
+	Table.update;
+	setMinAndMax(0, 40000);
+	selectWindow("ROI counts");
 }
 
 function addFilenameOverlay() {
